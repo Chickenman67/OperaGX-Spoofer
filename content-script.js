@@ -1,34 +1,38 @@
 // ============================================================
 // Opera GX Spoofer — Content Script (MAIN world)
 // ============================================================
-// Runs early (document_start) in the page's main execution
-// context to override navigator.* properties that websites
-// read at runtime.
+// Runs at document_start in the page's MAIN world via
+// manifest.json "world": "MAIN".  Reads the whitelist
+// directly from chrome.storage.sync and overrides
+// navigator.* properties on Navigator.prototype.
 // ============================================================
 
 (async () => {
   // ----------------------------------------------------------
-  // Step 1: Ask the background script if this domain is
-  //         whitelisted. Bail out immediately if not.
+  // Step 1: Check if this domain is whitelisted.
+  // chrome.storage.sync.get works in MAIN world.
+  // chrome.runtime.sendMessage does NOT — so we read
+  // storage directly.
   // ----------------------------------------------------------
   const domain = window.location.hostname;
-  let isWhitelisted = false;
 
+  let isWhitelisted = false;
   try {
-    const response = await chrome.runtime.sendMessage({
-      type: 'CHECK_DOMAIN',
-      domain,
-    });
-    isWhitelisted = response && response.isWhitelisted;
+    const result = await chrome.storage.sync.get('whitelist');
+    const domains = result.whitelist || [];
+    isWhitelisted = domains.some(
+      (d) => domain === d || domain.endsWith('.' + d)
+    );
   } catch {
-    // If the message channel fails (e.g. service worker not
-    // ready), fall back to inactive — no spoofing.
+    // Storage unavailable — skip spoofing.
   }
 
   if (!isWhitelisted) return;
 
   // ----------------------------------------------------------
-  // Step 2: Override navigator properties
+  // Step 2: Override navigator properties on the prototype.
+  // Since we run in world: MAIN at document_start, this
+  // code has full access to the page's JS context.
   // ----------------------------------------------------------
   const USER_AGENT =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 OPR/132.0.0.0';
@@ -82,10 +86,6 @@
     },
   };
 
-  // Object.defineProperties can only work on the prototype
-  // since navigator is not configurable in modern browsers.
-  // We use a getter on Navigator.prototype.
-
   try {
     // --- navigator.userAgent ---
     Object.defineProperty(Navigator.prototype, 'userAgent', {
@@ -137,10 +137,6 @@
       configurable: true,
       enumerable: true,
     });
-
-    // --- navigator.hardwareConcurrency ---
-    // (Optional) Opera GX has a CPU/RAM limiter feature, but
-    // we keep default values for now.
   } catch (e) {
     console.warn('[Opera GX Spoofer] Failed to override navigator properties:', e);
   }

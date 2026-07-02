@@ -3,6 +3,7 @@
 // ============================================================
 // Dynamically manages declarativeNetRequest rules based on
 // the user's domain whitelist stored in chrome.storage.
+// Also updates the toolbar badge (green ON / gray OFF).
 // ============================================================
 
 const RULE_ID_OFFSET = 1;
@@ -104,13 +105,6 @@ async function getWhitelist() {
 }
 
 // -----------------------------------------------------------
-// Set the whitelist in storage
-// -----------------------------------------------------------
-async function setWhitelist(domains) {
-  await chrome.storage.sync.set({ [STORAGE_KEY]: domains });
-}
-
-// -----------------------------------------------------------
 // Sync the dynamic DNR rules to match the current whitelist
 // -----------------------------------------------------------
 async function syncRules() {
@@ -130,6 +124,48 @@ async function syncRules() {
     removeRuleIds: existingRuleIds,
     addRules: newRules,
   });
+}
+
+// -----------------------------------------------------------
+// Update the toolbar badge for a specific tab
+// -----------------------------------------------------------
+async function updateBadge(tabId, url) {
+  if (!tabId || !url) return;
+
+  try {
+    const hostname = new URL(url).hostname;
+    const domains = await getWhitelist();
+    const isActive = domains.some(
+      (d) => hostname === d || hostname.endsWith('.' + d)
+    );
+
+    if (isActive) {
+      chrome.action.setBadgeText({ tabId, text: 'ON' });
+      chrome.action.setBadgeBackgroundColor({ tabId, color: '#2ecc71' });
+      chrome.action.setBadgeTextColor({ tabId, color: '#000' });
+    } else {
+      chrome.action.setBadgeText({ tabId, text: 'OFF' });
+      chrome.action.setBadgeBackgroundColor({ tabId, color: '#666666' });
+      chrome.action.setBadgeTextColor({ tabId, color: '#fff' });
+    }
+  } catch {
+    // Invalid URL or no tab — clear badge
+    chrome.action.setBadgeText({ tabId, text: '' });
+  }
+}
+
+// -----------------------------------------------------------
+// Update badge for the active tab
+// -----------------------------------------------------------
+async function updateActiveTabBadge() {
+  try {
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tabs[0]) {
+      updateBadge(tabs[0].id, tabs[0].url);
+    }
+  } catch {
+    // Ignore
+  }
 }
 
 // -----------------------------------------------------------
@@ -153,6 +189,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'sync' && changes[STORAGE_KEY]) {
     syncRules();
+    updateActiveTabBadge();
   }
 });
 
@@ -161,4 +198,20 @@ chrome.storage.onChanged.addListener((changes, area) => {
 // -----------------------------------------------------------
 chrome.runtime.onInstalled.addListener(() => {
   syncRules();
+  updateActiveTabBadge();
+});
+
+// -----------------------------------------------------------
+// Tab events — update badge when tab changes or loads
+// -----------------------------------------------------------
+chrome.tabs.onActivated.addListener((activeInfo) => {
+  chrome.tabs.get(activeInfo.tabId, (tab) => {
+    updateBadge(tab.id, tab.url);
+  });
+});
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.status === 'complete' && tab.url) {
+    updateBadge(tabId, tab.url);
+  }
 });

@@ -8,6 +8,8 @@ const DOMAIN_INPUT = document.getElementById('domainInput');
 const ADD_BTN = document.getElementById('addDomainBtn');
 const CURRENT_DOMAIN_EL = document.getElementById('currentDomain');
 const TOGGLE_CURRENT_BTN = document.getElementById('toggleCurrentBtn');
+const STATUS_ICON = document.getElementById('statusIcon');
+const STATUS_TEXT = document.getElementById('statusText');
 
 // -----------------------------------------------------------
 // Helpers
@@ -97,6 +99,15 @@ async function initCurrentTab() {
 
   const domains = await getWhitelist();
   const isInList = domains.includes(domain);
+
+  // Update header status
+  if (isInList) {
+    STATUS_ICON.textContent = '🟢';
+    STATUS_TEXT.textContent = 'Active — Spoofing as Opera GX 132 on Windows 10';
+  } else {
+    STATUS_ICON.textContent = '🔴';
+    STATUS_TEXT.textContent = 'Inactive — Click "Add to list" to enable spoofing on this site';
+  }
 
   if (isInList) {
     TOGGLE_CURRENT_BTN.textContent = 'Remove from list';
