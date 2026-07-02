@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Opera GX Spoofer</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🟢 Opera GX Spoofer</h1>
+      <p class="subtitle">Manage which domains appear as Opera GX</p>
+    </header>
+
+    <section class="current-tab" id="currentTabSection">
+      <div class="tab-info">
+        <span class="label">Current tab:</span>
+        <span id="currentDomain" class="domain">—</span>
+      </div>
+      <button id="toggleCurrentBtn" class="btn btn-sm">Add to list</button>
+    </section>
+
+    <section class="add-domain">
+      <input
+        type="text"
+        id="domainInput"
+        placeholder="e.g. example.com"
+        spellcheck="false"
+      />
+      <button id="addDomainBtn" class="btn btn-primary">Add</button>
+    </section>
+
+    <section class="domain-list">
+      <h2>Whitelisted Domains</h2>
+      <ul id="domainList">
+        <li class="empty-msg">No domains added yet.</li>
+      </ul>
+    </section>
+
+    <footer>
+      <p>
+        The spoofed headers & navigator properties only apply on the
+        domains listed above. All other sites are unaffected.
+      </p>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
