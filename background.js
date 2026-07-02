@@ -162,6 +162,3 @@ chrome.storage.onChanged.addListener((changes, area) => {
 chrome.runtime.onInstalled.addListener(() => {
   syncRules();
 });
-
-// Also run on startup (service worker may be woken up)
-syncRules();
